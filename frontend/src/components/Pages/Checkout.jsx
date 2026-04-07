@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
+import axios from "axios";
 
 export default function Checkout() {
     const { carrito, eliminarDelCarrito, actualizarCantidad, vaciarCarrito, totalItems, totalPrecio } = useCart();
@@ -42,45 +43,37 @@ export default function Checkout() {
 
         setProcesando(true);
         try {
-            const res = await fetch("http://localhost:8081/api/pedidos", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${usuario?.token}`,
+            await axios.post("http://localhost:8081/api/pedidos", {
+                userId: usuario._id || usuario.id,
+                comprador: {
+                    nombre: datosComprador.nombre,
+                    correo: datosComprador.correo,
+                    telefono: datosComprador.telefono
                 },
-                body: JSON.stringify({
-                    userId: usuario._id || usuario.id,
-                    comprador: {
-                        nombre: datosComprador.nombre,
-                        correo: datosComprador.correo,
-                        telefono: datosComprador.telefono
-                    },
-                    direccionEnvio: {
-                        direccion: datosComprador.direccion,
-                        ciudad: datosComprador.ciudad,
-                        departamento: datosComprador.departamento
-                    },
-                    productos: carrito.map((item) => ({
-                        productoId: item._id,
-                        nombre: item.Nombre,
-                        precio: parseFloat(item.Precio),
-                        cantidad: item.qty,
-                        imagen: item.Image || "",
-                    })),
-                    total: totalPrecio,
-                    metodoPago: 'contraentrega'
-                }),
+                direccionEnvio: {
+                    direccion: datosComprador.direccion,
+                    ciudad: datosComprador.ciudad,
+                    departamento: datosComprador.departamento
+                },
+                productos: carrito.map((item) => ({
+                    productoId: item._id,
+                    nombre: item.Nombre,
+                    precio: parseFloat(item.Precio),
+                    cantidad: item.qty,
+                    imagen: item.Image || "",
+                })),
+                total: totalPrecio,
+                metodoPago: 'contraentrega'
+            }, {
+                headers: {
+                    Authorization: `Bearer ${usuario?.token}`,
+                }
             });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.message || "Error al crear el pedido");
-            }
 
             vaciarCarrito();
             setPedidoExitoso(true);
         } catch (err) {
-            alert(err.message || "Error al procesar el pedido");
+            alert(err.response?.data?.message || err.message || "Error al procesar el pedido");
         } finally {
             setProcesando(false);
         }
